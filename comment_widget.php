@@ -81,6 +81,24 @@ License: GPLv2
 		
 		//build our widget settings form
      	function form( $instance ) {
+		
+			//Get posts which are of "guest-author" type
+			$args	=	array(
+							'post_type' => 'guest-author',
+							'posts_per_page' => -1
+						);
+			$guest_posts = new \WP_Query( $args );
+			$guest_names	=	array();
+			if ($guest_posts->have_posts()) :
+				//loop through the posts and list each until done. 
+				while ($guest_posts->have_posts()) : 
+					//Iterate the post index in The Loop. 
+					$guest_posts->the_post();
+					$guest_names[]	=	get_the_title();
+					
+				endwhile;
+			endif;
+			
 			
 			$instance = wp_parse_args( (array) $instance ); 
 			$author_id = $instance['author'];
@@ -98,6 +116,12 @@ License: GPLv2
 					?>
 							<option value="<?=$author->ID?> " <?=$selected ?>> <?=$author_info->first_name." ".$author_info->last_name?> </option>
 					<?
+						}
+						foreach($guest_names as $guest_name) {
+							$selected	= ($author_id == $guest_name) ? "selected" : "";
+							?>
+								<option value="<?=$guest_name?> " <?=$selected ?>> <?=$guest_name?> </option>
+							<?
 						}
 					?>
 					</select>
@@ -122,15 +146,27 @@ License: GPLv2
          	echo $before_widget; 
 			
 			$currentID = get_the_ID(); //Getting current post id
-
-			$args	=	array(
-							'post_type' => 'any',
-							'orderby' => 'comment_count',
-							'order' => 'DESC',
-							'author' => $instance['author'],
-							'posts_per_page' => 1,
-							'post__not_in'	=> array($currentID)
-						);
+			
+			if(!is_numeric($instance['author'])) {
+				//get posts by guest user name
+				$args = array(
+								'post_type' => 'news',
+								'post_status' => 'publish',
+								'author_name' => $instance['author'],
+								'posts_per_page' => 1,
+								'post__not_in'	=> array($currentID)
+							);
+			} else {
+				//Get posts by author
+				$args	=	array(
+								'post_type' => 'any',
+								'orderby' => 'comment_count',
+								'order' => 'DESC',
+								'author' => $instance['author'],
+								'posts_per_page' => 1,
+								'post__not_in'	=> array($currentID)
+							);
+			}
 						
 			//Checking cache if data is available. And if so assign it to $news and avoid if part.
 			$comments = get_transient('comments_keys');
@@ -140,8 +176,6 @@ License: GPLv2
 				set_transient('comments_key', $comments, 3600 * 24);
 			}
 			
-			//query_posts($args); //Query to get most commented post by given author
-			
 			//Main widget ourter div
 			echo '<div id="pmc_comments_main_div">';
 				//Widget title div
@@ -149,7 +183,7 @@ License: GPLv2
 					echo "Most Commented Post";
 				echo '</div>';
 				//Widget title div ends here
-			
+				
 				if ($comments->have_posts()) :
 					$counter	=	0;
 					//loop through the posts and list each until done. 
@@ -187,21 +221,71 @@ License: GPLv2
 							echo '</div>';
 							//News item title div ends here
 							
+							$post_id	=	get_the_ID();
+							
 							//Authorname div
 							echo '<div class="author_name">';
 								echo "Author : ";
-								the_author();
+								if(!is_numeric($instance['author'])) echo $instance['author']; else the_author();
 							echo '</div>';
 							//Authername div ends here
 							
+							
+							if(!is_numeric($instance['author'])) {  
+								//Get all posts for guest author
+								$args = array(
+									'post_type' => 'news',
+									'post_status' => 'publish',
+									'author_name' => $instance['author'],
+									'posts_per_page' => -1
+								);
+								
+								//$author_email_id	=	get_coauthor_meta( 'email' ); //email to get author thumbnail
+								
+							} else {	
+								//Get all posts for author
+								$author_id	=	get_the_author_meta( 'ID' );//get current author id
+								$args = array(
+									'post_type' => 'news',
+									'post_status' => 'publish',
+									'author' => $author_id,
+									'posts_per_page' => -1
+								);
+								
+								$author_email_id	=	get_the_author_meta( 'email' ); //email to get author thumbnail
+							}
+							$authors_posts = new \WP_Query( $args );
+							$author_ids	=	array();
+							if ( $authors_posts->have_posts() ) :
+								while ( $authors_posts->have_posts() ) : $authors_posts->the_post();
+							 		
+									$authors_post_ids[] = get_the_ID();
+							 
+								endwhile;
+							endif;
+							
+							wp_reset_query();
+							
+							//Get most recent comment from $authors_post_ids
 							$args = array(
-								'post_id' => get_the_ID(),
+								'post__in' => $authors_post_ids,
 								'orderby' => 'comment_ID',
 								'number' => 1,
 								'order'	=>	'DESC'
 							);
 							$comment = get_comments( $args );
 							
+							//Get author image
+							if(!is_numeric($instance['author'])) {
+								//if it is guest author 
+								echo get_avatar( '', '32', 'http://www.goldderby.com/img/avtar.gif');
+
+							} else {
+								//echo $author_id;
+								echo get_avatar( $author_email_id, '32', 'http://www.goldderby.com/img/avtar.gif');
+							}
+							
+							get_the_author();
 							echo '<div style="background:'.$bgColor.';" class="news_item_comment" >';
 							?><a title="<?php the_title(); ?>" href="<?php echo get_comment_link( $comment[0]->comment_ID ); ?>"><?php
 								echo '"'.$this->short_texts($comment[0]->comment_content, 200).'" - By: '.$comment[0]->comment_author;
@@ -221,6 +305,13 @@ License: GPLv2
 			wp_reset_query();
 			
 			echo $after_widget; 
+		}
+		
+		
+		function getCurrentAuthorPostsIds($author_id) {
+			//echo $author_id;
+			
+			
 		}
 		
 		
@@ -253,6 +344,48 @@ License: GPLv2
 			if(strlen($comment) > $length )
 				return $shortComment	=	substr($comment, 0, $length ). '...';
 			else return $comment;
+		}
+		
+		
+		
+		
+		function the_latest_author_posts($post) {
+		
+				//some content goes here regarding the post itself!!!
+				$relatedargs = array(
+		
+					 'author' => $post->post_author,
+					 'post__not_in' => array( $post->ID),
+					 'posts_per_page' => 3
+		
+				);
+		
+				$relatedquery = new WP_Query( $relatedargs );
+		
+				while($relatedquery->have_posts()){
+					 $relatedquery->the_post(); 
+					 $ID = get_the_ID();
+				?>
+		
+					 <div class="span3">
+		
+					 <?php
+						  if(has_post_thumbnail()) { 
+							   $relatedthumbnail = wp_get_attachment_image_src( get_post_thumbnail_id($ID), 'medium', false);
+							   $relatedthumbnail_large = wp_get_attachment_image_src( get_post_thumbnail_id($ID), 'full', false);
+		?>
+		
+							   <div class="hover_colour"><a href="<?php echo $relatedthumbnail_large['0']; ?>" rel="prettyPhoto"><img src="<?php echo $relatedthumbnail['0']; ?>" alt="<?php the_title(); ?>" /></a>
+							   </div>
+		
+						 <?php } ?>
+		
+							   <h6><a href="<?php the_permalink(); ?>"><span><?php the_title(); ?></span></a><br><i class="icon-time muted"></i> <?php echo get_the_time('j') . '/' . get_the_time('m') . '/' . get_the_time('Y') . ' '; ?> <i class="icon-comments muted"></i> <a href="<?php the_permalink(); ?>"> <?php comments_number(0 . __(' comments','textdomain'), 1 . __(' comment','textdomain'), '% ' . __('comments','textdomain')); ?></a></h6>
+		
+					   </div>
+		
+			<?php }
+			wp_reset_postdata();
 		}
 	}
 ?> 
