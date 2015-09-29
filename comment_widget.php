@@ -345,47 +345,6 @@ License: GPLv2
 				return $shortComment	=	substr($comment, 0, $length ). '...';
 			else return $comment;
 		}
-		
-		
-		
-		
-		function the_latest_author_posts($post) {
-		
-				//some content goes here regarding the post itself!!!
-				$relatedargs = array(
-		
-					 'author' => $post->post_author,
-					 'post__not_in' => array( $post->ID),
-					 'posts_per_page' => 3
-		
-				);
-		
-				$relatedquery = new WP_Query( $relatedargs );
-		
-				while($relatedquery->have_posts()){
-					 $relatedquery->the_post(); 
-					 $ID = get_the_ID();
-				?>
-		
-					 <div class="span3">
-		
-					 <?php
-						  if(has_post_thumbnail()) { 
-							   $relatedthumbnail = wp_get_attachment_image_src( get_post_thumbnail_id($ID), 'medium', false);
-							   $relatedthumbnail_large = wp_get_attachment_image_src( get_post_thumbnail_id($ID), 'full', false);
-		?>
-		
-							   <div class="hover_colour"><a href="<?php echo $relatedthumbnail_large['0']; ?>" rel="prettyPhoto"><img src="<?php echo $relatedthumbnail['0']; ?>" alt="<?php the_title(); ?>" /></a>
-							   </div>
-		
-						 <?php } ?>
-		
-							   <h6><a href="<?php the_permalink(); ?>"><span><?php the_title(); ?></span></a><br><i class="icon-time muted"></i> <?php echo get_the_time('j') . '/' . get_the_time('m') . '/' . get_the_time('Y') . ' '; ?> <i class="icon-comments muted"></i> <a href="<?php the_permalink(); ?>"> <?php comments_number(0 . __(' comments','textdomain'), 1 . __(' comment','textdomain'), '% ' . __('comments','textdomain')); ?></a></h6>
-		
-					   </div>
-		
-			<?php }
-			wp_reset_postdata();
-		}
+
 	}
 ?> 
