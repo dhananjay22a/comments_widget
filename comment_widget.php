@@ -53,9 +53,9 @@ License: GPLv2
 				#pmc_comments_main_div .widget_title_div { font-size:20px; background: #cccccc; color:#0088CC; text-align:center; }
 				#pmc_comments_main_div .news_item_main_div {  font-size:12px; padding:5px; overflow:auto; }
 				#pmc_comments_main_div .news_item_thumbnail{ width:52px; height:52px; padding:1px; float:left; }
-				#pmc_comments_main_div .news_item_title { width:183px; height:37px; padding:0 5px; float:left; }
+				#pmc_comments_main_div .news_item_title { width:296px; height:37px; padding:0 5px; float:left; }
 				#pmc_comments_main_div .author_name { float:left; height:15px; font-size:10px; color:#7e7e7e; padding: 0 5px; }
-				#pmc_comments_main_div .news_item_comment { width:230px; height:auto; padding:0 5px; float:left; font-style:italic; color:#8c8c8c; }
+				#pmc_comments_main_div .news_item_comment { width:353px; height:auto; padding:0 5px; float:left; font-style:italic; color:#8c8c8c; }
      		</style>
  		<?php 
 	}
@@ -227,7 +227,7 @@ License: GPLv2
 							//News Item title div
 							echo '<div style="color:'.$textColor.'; background:'.$bgColor.';" class="news_item_title" >';
 							?>
-								<a title="<?php the_title(); ?>" href="<?php the_permalink() ?>"><?php echo $this->short_title(50)/* . ' (' . get_comments_number() . ')'*/; ?></a><br>
+								<a title="<?php the_title(); ?>" href="<?php the_permalink() ?>"><?php echo $this->short_title(100)/* . ' (' . get_comments_number() . ')'*/; ?></a><br>
 							<?
 							echo '</div>';
 							//News item title div ends here
@@ -249,8 +249,6 @@ License: GPLv2
 									'author_name' => $instance['author'],
 									'posts_per_page' => -1
 								);
-								
-								
 							} else {	
 								//Get all posts for author
 								$author_id	=	get_the_author_meta( 'ID' );//get current author id
@@ -316,11 +314,11 @@ License: GPLv2
 								
 								
 								//if it is guest author 
-								echo get_avatar( $guest_author_email_id, '32', 'http://www.goldderby.com/img/avtar.gif');
+								echo get_avatar( $guest_author_email_id, '20', 'http://www.goldderby.com/img/avtar.gif');
 
 							} else {
 								//echo $author_id;
-								echo get_avatar( $author_email_id, '32', 'http://www.goldderby.com/img/avtar.gif');
+								echo get_avatar( $author_email_id, '20', 'http://www.goldderby.com/img/avtar.gif');
 							}
 							
 							
@@ -334,7 +332,6 @@ License: GPLv2
 							//Checking cache if data is available. And if so assign it to $comment and avoid if part.
 							$comment = get_transient('comments_'.$author_id_or_guest_name);
 							if ($comment === false) {
-								echo "not found";
 								$comment = get_comments( $args );
 								//Adding data to cache
 								set_transient('comments_'.$author_id_or_guest_name, $comment, 3600 * 24);
@@ -360,13 +357,6 @@ License: GPLv2
 			wp_reset_query();
 			
 			echo $after_widget; 
-		}
-		
-		
-		function getCurrentAuthorPostsIds($author_id) {
-			//echo $author_id;
-			
-			
 		}
 		
 		
