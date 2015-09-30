@@ -88,16 +88,24 @@ License: GPLv2
 							'posts_per_page' => -1
 						);
 			$guest_posts = new \WP_Query( $args );
+			
+			//Checking cache if data is available. And if so assign it to $guest_names and avoid if part.
 			$guest_names	=	array();
-			if ($guest_posts->have_posts()) :
-				//loop through the posts and list each until done. 
-				while ($guest_posts->have_posts()) : 
-					//Iterate the post index in The Loop. 
-					$guest_posts->the_post();
-					$guest_names[]	=	get_the_title();
-					
-				endwhile;
-			endif;
+			$guest_names = get_transient('guest_author_posts_key');
+			if (empty($guest_names)) {
+				
+				if ($guest_posts->have_posts()) :
+					//loop through the posts and list each until done. 
+					while ($guest_posts->have_posts()) : 
+						//Iterate the post index in The Loop. 
+						$guest_posts->the_post();
+						$guest_names[]	=	get_the_title();
+						
+					endwhile;
+				endif;
+				//Adding data to cache
+				set_transient('guest_author_posts_key', $guest_names, 3600 * 24);
+			}
 			
 			
 			$instance = wp_parse_args( (array) $instance ); 
@@ -147,6 +155,8 @@ License: GPLv2
 			
 			$currentID = get_the_ID(); //Getting current post id
 			
+			$selected_author	=	$instance['author']; //to be used in cache name
+			
 			if(!is_numeric($instance['author'])) {
 				//get posts by guest user name
 				$args = array(
@@ -168,12 +178,13 @@ License: GPLv2
 							);
 			}
 						
-			//Checking cache if data is available. And if so assign it to $news and avoid if part.
-			$comments = get_transient('comments_keys');
-			if ($comments === false) {
-				$comments = new \WP_Query( $args );
+			//Checking cache if data is available. And if so assign it to $most_commented_post and avoid if part.
+			$most_commented_post = get_transient('comments_key_'.$selected_author);
+			if ($most_commented_post === false) {
+
+				$most_commented_post = new \WP_Query( $args );
 				//Adding data to cache
-				set_transient('comments_key', $comments, 3600 * 24);
+				set_transient('comments_key_'.$selected_author, $most_commented_post, 3600 * 24);
 			}
 			
 			//Main widget ourter div
@@ -184,12 +195,12 @@ License: GPLv2
 				echo '</div>';
 				//Widget title div ends here
 				
-				if ($comments->have_posts()) :
+				if ($most_commented_post->have_posts()) :
 					$counter	=	0;
 					//loop through the posts and list each until done. 
-					while ($comments->have_posts()) : 
+					while ($most_commented_post->have_posts()) : 
 						//Iterate the post index in The Loop. 
-						$comments->the_post();
+						$most_commented_post->the_post();
 						
 						if($counter%2 == 0 ) {
 							$textColor	=	'#2e2e2e';
@@ -230,7 +241,6 @@ License: GPLv2
 							echo '</div>';
 							//Authername div ends here
 							
-							
 							if(!is_numeric($instance['author'])) {  
 								//Get all posts for guest author
 								$args = array(
@@ -240,7 +250,6 @@ License: GPLv2
 									'posts_per_page' => -1
 								);
 								
-								//$author_email_id	=	get_coauthor_meta( 'email' ); //email to get author thumbnail
 								
 							} else {	
 								//Get all posts for author
@@ -254,17 +263,66 @@ License: GPLv2
 								
 								$author_email_id	=	get_the_author_meta( 'email' ); //email to get author thumbnail
 							}
-							$authors_posts = new \WP_Query( $args );
-							$author_ids	=	array();
-							if ( $authors_posts->have_posts() ) :
-								while ( $authors_posts->have_posts() ) : $authors_posts->the_post();
-							 		
-									$authors_post_ids[] = get_the_ID();
-							 
-								endwhile;
-							endif;
+							
+							$author_id_or_guest_name	=	(!is_numeric($instance['author'])) ? $instance['author'] : $author_id; //variable to be used in cache name ahead
+			
+							
+							//Checking cache if data is available. And if so assign it to $authors_post_ids and avoid if part.
+							$authors_post_ids = get_transient('authors_posts_'.$author_id_or_guest_name);
+							if ($authors_post_ids === false) {
+								
+								$authors_posts = new \WP_Query( $args );
+								$author_ids	=	array();
+								if ( $authors_posts->have_posts() ) :
+									while ( $authors_posts->have_posts() ) : $authors_posts->the_post();
+										
+										$authors_post_ids[] = get_the_ID();
+								 
+									endwhile;
+								endif;
+								//Adding data to cache
+								set_transient('authors_posts_'.$author_id_or_guest_name, $authors_post_ids, 3600 * 24);
+							}
 							
 							wp_reset_query();
+							
+							//Get author image
+							if(!is_numeric($instance['author'])) {
+								//Get posts which are of "guest-author" type and post title is $instance['author']
+								$args	=	array(
+												'name' => 'cap-'.strtolower($instance['author']),
+												'post_type' => 'guest-author',
+												'posts_per_page' => 1,
+											);
+								//Checking cache if data is available. And if so assign it to $guest_author_post_id and avoid if part.
+								$guest_author_post_id = get_transient('guest_author_post_cap-'.strtolower($instance['author']));
+								if ($guest_author_post_id === false) {
+									
+									$guest_author_post = new \WP_Query( $args );
+									if ($guest_author_post->have_posts()) :
+											//Iterate the post index in The Loop. 
+											$guest_author_post->the_post();
+											$guest_author_post_id	=	get_the_ID();
+									endif;
+									wp_reset_query();
+									
+									//Adding data to cache
+									set_transient('guest_author_post_cap-'.strtolower($instance['author']), $guest_author_post_id, 3600 * 24);	
+								}
+								
+								
+								//Now get email id for this $guest_author_post_id from <prefix>_postmeta table
+								$guest_author_email_id = get_post_meta( $guest_author_post_id, "cap-user_email", true);
+								
+								
+								//if it is guest author 
+								echo get_avatar( $guest_author_email_id, '32', 'http://www.goldderby.com/img/avtar.gif');
+
+							} else {
+								//echo $author_id;
+								echo get_avatar( $author_email_id, '32', 'http://www.goldderby.com/img/avtar.gif');
+							}
+							
 							
 							//Get most recent comment from $authors_post_ids
 							$args = array(
@@ -273,19 +331,16 @@ License: GPLv2
 								'number' => 1,
 								'order'	=>	'DESC'
 							);
-							$comment = get_comments( $args );
-							
-							//Get author image
-							if(!is_numeric($instance['author'])) {
-								//if it is guest author 
-								echo get_avatar( '', '32', 'http://www.goldderby.com/img/avtar.gif');
-
-							} else {
-								//echo $author_id;
-								echo get_avatar( $author_email_id, '32', 'http://www.goldderby.com/img/avtar.gif');
+							//Checking cache if data is available. And if so assign it to $comment and avoid if part.
+							$comment = get_transient('comments_'.$author_id_or_guest_name);
+							if ($comment === false) {
+								echo "not found";
+								$comment = get_comments( $args );
+								//Adding data to cache
+								set_transient('comments_'.$author_id_or_guest_name, $comment, 3600 * 24);
 							}
 							
-							get_the_author();
+							
 							echo '<div style="background:'.$bgColor.';" class="news_item_comment" >';
 							?><a title="<?php the_title(); ?>" href="<?php echo get_comment_link( $comment[0]->comment_ID ); ?>"><?php
 								echo '"'.$this->short_texts($comment[0]->comment_content, 200).'" - By: '.$comment[0]->comment_author;
@@ -322,8 +377,15 @@ License: GPLv2
 			
 			// Create the WP_User_Query object
 			$wp_user_query = new \WP_User_Query($args);
-			// Get the results
-			$authors = $wp_user_query->get_results();
+			
+			//Checking cache if data is available. And if so assign it to $news and avoid if part.
+			$authors = get_transient('authors_key');
+			if ($authors === false) {
+				// Get the results
+				$authors = $wp_user_query->get_results();
+				//Adding data to cache
+				set_transient('authors_key', $authors, 3600 * 24);
+			}
 			
 			return $authors;
 		}
